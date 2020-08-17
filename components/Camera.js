@@ -1,7 +1,6 @@
 import React, { Component } from "react";
 import { View, Text } from "react-native";
 import * as tf from "@tensorflow/tfjs";
-import "@tensorflow/tfjs-react-native";
 import { Camera } from "expo-camera";
 import { cameraWithTensors } from "@tensorflow/tfjs-react-native";
 import * as posenet from "@tensorflow-models/posenet";

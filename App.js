@@ -88,6 +88,8 @@ class App extends React.Component {
         const source = { uri: response.uri }
         this.setState({ image: source })
         this.classifyImage()
+
+        console.log(source)
       }
     } catch (error) {
       console.log(error)

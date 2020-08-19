@@ -1,15 +1,20 @@
 import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Platform, Image } from 'react-native';
 import { Camera } from 'expo-camera';
+import * as ImageManipulator from "expo-image-manipulator";
 import * as Permissions from 'expo-permissions';
+import * as tf from '@tensorflow/tfjs'
+import { fetch } from '@tensorflow/tfjs-react-native'
+import * as mobilenet from '@tensorflow-models/mobilenet'
+import * as jpeg from 'jpeg-js'
 import { FontAwesome, Ionicons,MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 
 
-
-
 export default class App extends React.Component {
   state = {
+    isTfReady: false,
+    isModelReady: false,
     hasPermission: null,
     cameraType: Camera.Constants.Type.front,
     pictureTaken: false,
@@ -18,6 +23,13 @@ export default class App extends React.Component {
   }
 
   async componentDidMount() {
+    await tf.ready()
+    this.setState({
+      isTfReady: true
+    })
+    this.model = await mobilenet.load()
+    this.setState({ isModelReady: true })
+    console.log("Model ready")
     this.getPermissionAsync()
   }
 
@@ -44,16 +56,65 @@ export default class App extends React.Component {
     })
   }
 
+  imageToTensor(rawImageData) {
+    const TO_UINT8ARRAY = true
+    const { width, height, data } = jpeg.decode(rawImageData, TO_UINT8ARRAY)
+    // Drop the alpha channel info for mobilenet
+    const buffer = new Uint8Array(width * height * 3)
+    let offset = 0 // offset into original data
+    for (let i = 0; i < buffer.length; i += 3) {
+      buffer[i] = data[offset]
+      buffer[i + 1] = data[offset + 1]
+      buffer[i + 2] = data[offset + 2]
+
+      offset += 4
+    }
+
+    console.log(buffer)
+    return tf.tensor3d(buffer, [height, width, 3])
+  }
+
+  classifyImage = async (image) => {
+    try {
+      const imageAssetPath = await Image.resolveAssetSource(image)
+      console.log('here', imageAssetPath)
+      const response = await fetch(imageAssetPath.uri, {}, { isBinary: true })
+      console.log(response)
+      const rawImageData = await response.arrayBuffer()
+      const imageTensor = this.imageToTensor(rawImageData)
+      const predictions = await this.model.classify(imageTensor)
+      this.setState({ predictions })
+      console.log(predictions)
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
   takePicture = async () => {
     if (this.camera) {
       let photo = await this.camera.takePictureAsync({
-        exif: true
-      });
+        exif: true,
+        quality: 0.5
+      })
       this.setState({
         pictureTaken: true,
-        picture: photo,
+        picture: {uri: photo.uri},
       })
       console.log(photo)
+
+      const newUri = await ImageManipulator.manipulateAsync(photo.uri, [
+        {
+          resize: {
+            width: 420,
+          }
+        }
+      ])
+
+      console.log(newUri)
+
+      this.classifyImage({
+        uri: newUri.uri,
+      })
     }
   }
 

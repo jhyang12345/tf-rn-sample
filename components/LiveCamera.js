@@ -96,25 +96,62 @@ export default class App extends React.Component {
         exif: true,
         quality: 0.5
       })
-      this.setState({
-        pictureTaken: true,
-        picture: {uri: photo.uri},
-      })
-      console.log(photo)
 
-      const newUri = await ImageManipulator.manipulateAsync(photo.uri, [
-        {
-          resize: {
-            width: 420,
-          }
-        }
-      ])
+      const { faces } = this.state
 
-      console.log(newUri)
+      if (faces.length > 0) {
+        faces.forEach(async (face) => {
+          console.log(face, photo)
+          const newUri = await ImageManipulator.manipulateAsync(photo.uri, [
+            {
+              crop: {
+                originX: face.bounds.origin.x,
+                originY: face.bounds.origin.y,
+                width: face.bounds.size.width,
+                height: face.bounds.size.height
+              }
+            },
+          ])
 
-      this.classifyImage({
-        uri: newUri.uri,
-      })
+          console.log({
+            originX: face.bounds.origin.x,
+            originY: face.bounds.origin.y,
+            width: face.bounds.size.width,
+            height: face.bounds.size.height
+          })
+
+          this.setState({
+            pictureTaken: true,
+            picture: newUri,
+          })
+        })
+      }
+
+      // this.setState({
+      //   pictureTaken: true,
+      //   picture: {uri: photo.uri},
+      // })
+      // console.log(photo)
+
+      
+      // const newUri = await ImageManipulator.manipulateAsync(photo.uri, [
+      //   {
+      //     crop: {
+            
+      //     }
+      //   },
+      //   {
+      //     resize: {
+      //       width: 420,
+      //     }
+      //   }
+      // ])
+
+      // console.log(newUri)
+
+      // this.classifyImage({
+      //   uri: newUri.uri,
+      // })
     }
   }
 
@@ -124,9 +161,10 @@ export default class App extends React.Component {
     });
   }
 
-  onFacesDetected = (faces) => {
+  onFacesDetected = ({faces}) => {
+    console.log(faces)
     this.setState({
-      faces: faces.faces,
+      faces: faces,
     })
   }
 
@@ -147,7 +185,7 @@ export default class App extends React.Component {
             left: face.bounds.origin.x,
             top: face.bounds.origin.y,
             borderWidth: 1,
-            borderRadius: 3,
+            borderRadius: 8,
             borderColor: '#FFF',
           }}>
           </View>
@@ -175,6 +213,10 @@ export default class App extends React.Component {
               type={this.state.cameraType}
               ref={ref => {this.camera = ref}}
               onFacesDetected={this.onFacesDetected}
+              onLayout={(evt) => {
+                const {x, y, width, height} = evt.nativeEvent.layout
+                console.log(x, y, width, height)
+              }}
             >
               <View style={{flex:1, flexDirection:"row",justifyContent:"space-between",margin:30}}>
                 <TouchableOpacity
@@ -215,9 +257,9 @@ export default class App extends React.Component {
                       style={{ color: "#fff", fontSize: 40}}
                   />
                 </TouchableOpacity>
-                {this.drawFaces()}
+                
               </View>
-
+              {this.drawFaces()}
             </Camera>
             : <Image
                 resizeMethod={'scale'}

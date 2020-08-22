@@ -19,7 +19,13 @@ export default class App extends React.Component {
     cameraType: Camera.Constants.Type.front,
     pictureTaken: false,
     picture: null,
-    faces: []
+    faces: [],
+    dimensions: {
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0,
+    }
   }
 
   async componentDidMount() {
@@ -70,7 +76,6 @@ export default class App extends React.Component {
       offset += 4
     }
 
-    console.log(buffer)
     return tf.tensor3d(buffer, [height, width, 3])
   }
 
@@ -90,6 +95,18 @@ export default class App extends React.Component {
     }
   }
 
+  getCropDimensions = (crop, photo) => {
+    const { dimensions } = this.state
+    const widthRatio = photo.width / dimensions.width
+    const heightRatio = photo.height / dimensions.height
+    return {
+      originX: crop.originX * widthRatio,
+      originY: crop.originY * heightRatio,
+      width: crop.width * widthRatio,
+      height: crop.height * heightRatio
+    }
+  }
+
   takePicture = async () => {
     if (this.camera) {
       let photo = await this.camera.takePictureAsync({
@@ -101,24 +118,20 @@ export default class App extends React.Component {
 
       if (faces.length > 0) {
         faces.forEach(async (face) => {
-          console.log(face, photo)
-          const newUri = await ImageManipulator.manipulateAsync(photo.uri, [
-            {
-              crop: {
-                originX: face.bounds.origin.x,
-                originY: face.bounds.origin.y,
-                width: face.bounds.size.width,
-                height: face.bounds.size.height
-              }
-            },
-          ])
-
-          console.log({
+          const cropDimensions = this.getCropDimensions({
             originX: face.bounds.origin.x,
             originY: face.bounds.origin.y,
             width: face.bounds.size.width,
             height: face.bounds.size.height
-          })
+          }, photo)
+          const newUri = await ImageManipulator.manipulateAsync(photo.uri, [
+            {
+              crop: cropDimensions
+            },
+            {
+              flip: 'horizontal'
+            }
+          ])
 
           this.setState({
             pictureTaken: true,
@@ -162,7 +175,6 @@ export default class App extends React.Component {
   }
 
   onFacesDetected = ({faces}) => {
-    console.log(faces)
     this.setState({
       faces: faces,
     })
@@ -215,7 +227,14 @@ export default class App extends React.Component {
               onFacesDetected={this.onFacesDetected}
               onLayout={(evt) => {
                 const {x, y, width, height} = evt.nativeEvent.layout
-                console.log(x, y, width, height)
+                this.setState({
+                  dimensions: {
+                    x,
+                    y,
+                    width,
+                    height
+                  }
+                })
               }}
             >
               <View style={{flex:1, flexDirection:"row",justifyContent:"space-between",margin:30}}>

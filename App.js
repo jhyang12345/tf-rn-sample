@@ -27,11 +27,6 @@ class App extends React.Component {
   }
 
   async componentDidMount() {
-    await tf.ready()
-    this.setState({
-      isTfReady: true
-    })
-    this.model = await mobilenet.load()
     this.setState({ isModelReady: true })
     this.getPermissionAsync()
   }
@@ -105,48 +100,8 @@ class App extends React.Component {
   }
 
   render() {
-    const { isTfReady, isModelReady, predictions, image } = this.state
-
     return (
       <View style={styles.container}>
-        {/* <StatusBar barStyle='light-content' />
-        <View style={styles.loadingContainer}>
-          <Text style={styles.text}>
-            TFJS ready? {isTfReady ? <Text>✅</Text> : ''}
-          </Text>
-
-          <View style={styles.loadingModelContainer}>
-            <Text style={styles.text}>Model ready? </Text>
-            {isModelReady ? (
-              <Text style={styles.text}>✅</Text>
-            ) : (
-              <ActivityIndicator size='small' />
-            )}
-          </View>
-        </View>
-        <TouchableOpacity
-          style={styles.imageWrapper}
-          onPress={isModelReady ? this.selectImage : undefined}>
-          {image && <Image source={image} style={styles.imageContainer} />}
-
-          {isModelReady && !image && (
-            <Text style={styles.transparentText}>Tap to choose image</Text>
-          )}
-        </TouchableOpacity>
-        <View style={styles.predictionWrapper}>
-          {isModelReady && image && (
-            <Text style={styles.text}>
-              Predictions: {predictions ? '' : 'Predicting...'}
-            </Text>
-          )}
-          {isModelReady &&
-            predictions &&
-            predictions.map(p => this.renderPrediction(p))}
-        </View>
-        <View style={styles.footer}>
-          <Text style={styles.poweredBy}>Powered by:</Text>
-          <Image source={require('./assets/tfjs.jpg')} style={styles.tfLogo} />
-        </View> */}
         <LiveCamera />
       </View>
     )

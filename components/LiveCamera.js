@@ -37,8 +37,8 @@ export default class LiveCamera extends React.Component {
       isTfReady: true
     })
     try {
-      const modelJson = require('../models/cnn_pool/model.json')
-      const modelWeightsId = require('../models/cnn_pool/group1-shard1of1.bin')
+      const modelJson = require('../models/cnn_dropout/model.json')
+      const modelWeightsId = require('../models/cnn_dropout/group1-shard1of1.bin')
       const resource = await bundleResourceIO(modelJson, modelWeightsId)
       // Provided weight data has no target variable: batch_normalization_40/moving_mean
       this.model = await tf.loadLayersModel(resource, { strict: false })
@@ -106,7 +106,7 @@ export default class LiveCamera extends React.Component {
       const response = await fetch(imageAssetPath.uri, {}, { isBinary: true })
       const rawImageData = await response.arrayBuffer()
       const imageTensor = this.imageToTensor(rawImageData)
-      // console.log(imageTensor.dataSync())
+      console.log(imageTensor.shape)
       const prediction = await this.model.predict(imageTensor)
       const value = prediction.dataSync()
       return value[0]
@@ -241,10 +241,20 @@ export default class LiveCamera extends React.Component {
   }
 
   render(){
-    const { hasPermission, pictureTaken, pictures, predictions } = this.state
-    if (hasPermission === null) {
-      return <View />;
-    } else if (hasPermission === false) {
+    const { hasPermission, pictureTaken, pictures, predictions, isModelReady } = this.state
+    if (isModelReady === false) {
+      return (
+        <View style={{
+          marginTop: 64,
+          padding: 4,
+        }}>
+          <Text style={{color: '#FFF', fontSize: 32, fontWeight: 'bold', textAlign: 'center'}}>
+            Loading Model...
+          </Text>
+        </View>
+      )
+    }
+    else if (hasPermission === false) {
       return <Text>No access to camera</Text>;
     } else {
       return (
@@ -318,8 +328,12 @@ export default class LiveCamera extends React.Component {
                   reset={this.reset}
                 />
             </ScrollView>
-            
 
+          }
+          {
+            this.state.bufferImage
+            ? <Image source={this.state.bufferImage} />
+            : null
           }
             
         </View>

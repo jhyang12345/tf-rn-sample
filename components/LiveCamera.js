@@ -21,6 +21,7 @@ export default class LiveCamera extends React.Component {
     cameraType: Camera.Constants.Type.front,
     pictureTaken: false,
     pictures: [],
+    predictions: [],
     faces: [],
     dimensions: {
       x: 0,
@@ -36,11 +37,12 @@ export default class LiveCamera extends React.Component {
       isTfReady: true
     })
     try {
-      const modelJson = require('../models/hotdog/model.json')
-      const modelWeightsId = require('../models/hotdog/group1-shard1of1.bin')
+      const modelJson = require('../models/cnn_pool/model.json')
+      const modelWeightsId = require('../models/cnn_pool/group1-shard1of1.bin')
       const resource = await bundleResourceIO(modelJson, modelWeightsId)
       // Provided weight data has no target variable: batch_normalization_40/moving_mean
-      this.model = await tf.loadLayersModel(resource, {strict: false})
+      this.model = await tf.loadLayersModel(resource, { strict: false })
+      // this.model = await tf.loadLayersModel(resource)
     } catch (err) {
       console.log(err)
     }
@@ -87,21 +89,27 @@ export default class LiveCamera extends React.Component {
       offset += 4
     }
 
-    return tf.tensor4d(buffer, [1, height, width, 3])
+    const tensor = tf.tensor4d(buffer, [1, height, width, 3])
+
+    const half = 255 / 2
+    let normalizedInputs = tensor.sub(half).div(half)
+
+    console.log(normalizedInputs.max().dataSync(), normalizedInputs.min().dataSync())
+
+    return normalizedInputs
   }
 
   classifyImage = async (image) => {
     try {
+      console.log("Classifying image...")
       const imageAssetPath = await Image.resolveAssetSource(image)
-      console.log('here', imageAssetPath)
       const response = await fetch(imageAssetPath.uri, {}, { isBinary: true })
-      console.log(response)
       const rawImageData = await response.arrayBuffer()
       const imageTensor = this.imageToTensor(rawImageData)
+      // console.log(imageTensor.dataSync())
       const prediction = await this.model.predict(imageTensor)
       const value = prediction.dataSync()
-      console.log(value[0])
-      this.setState({ prediction })
+      return value[0]
     } catch (error) {
       console.log(error)
     }
@@ -127,7 +135,7 @@ export default class LiveCamera extends React.Component {
         quality: 0.5
       })
 
-      const { faces } = this.state
+      const { faces, cameraType } = this.state
 
       if (faces.length > 0) {
         for (const face of faces) {
@@ -138,17 +146,25 @@ export default class LiveCamera extends React.Component {
             height: face.bounds.size.height
           }, photo)
 
-          const newUri = await ImageManipulator.manipulateAsync(photo.uri, [
-            {
-              crop: cropDimensions
-            },
-            {
-              flip: 'horizontal'
-            }
-          ])
+          let newUri;
+          if (cameraType === Camera.Constants.Type.front) {
+            newUri = await ImageManipulator.manipulateAsync(photo.uri, [
+              {
+                crop: cropDimensions
+              },
+              {
+                flip: 'horizontal'
+              }
+            ])
+          } else {
+            newUri = await ImageManipulator.manipulateAsync(photo.uri, [
+              {
+                crop: cropDimensions
+              }
+            ])
+          } 
 
           this.setState((prevState) => ({
-            pictureTaken: true,
             pictures: [...prevState.pictures, newUri],
           }))
         }
@@ -163,8 +179,13 @@ export default class LiveCamera extends React.Component {
               }
             }
           ])
-          console.log("Resized", resizedImage)
-          await this.classifyImage(resizedImage)
+          const prediction = await this.classifyImage(resizedImage)
+          console.log("Done predicting")
+
+          this.setState((prevState) => ({
+            pictureTaken: true,
+            predictions: [...prevState.predictions, prediction],
+          }))
         }
       }
 
@@ -215,11 +236,12 @@ export default class LiveCamera extends React.Component {
     this.setState({
       pictureTaken: false,
       pictures: [],
+      predictions: [],
     })
   }
 
   render(){
-    const { hasPermission, pictureTaken, pictures } = this.state
+    const { hasPermission, pictureTaken, pictures, predictions } = this.state
     if (hasPermission === null) {
       return <View />;
     } else if (hasPermission === false) {
@@ -292,6 +314,7 @@ export default class LiveCamera extends React.Component {
             : <ScrollView>
                 <Gallery 
                   pictures={pictures}
+                  predictions={predictions}
                   reset={this.reset}
                 />
             </ScrollView>

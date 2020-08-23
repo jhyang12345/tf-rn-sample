@@ -4,23 +4,30 @@ import { StyleSheet, Text, View, TouchableOpacity, Platform, Image } from 'react
 
 export default class Gallery extends React.Component {
   render() {
-    const { pictures } = this.props
+    const { pictures, predictions } = this.props
 
+    console.log('Predictions', predictions)
     return (
       <View style={styles.container}>
         {
-          pictures.map((picture) => (
-            <Image
-              resizeMethod={'scale'}
-              resizeMode={'contain'}
-              key={picture.uri}
-              style={{
-                width: 275,
-                height: 275,
-                resizeMode: 'contain',
-              }}
-              source={picture}
-            />
+          pictures.map((picture, index) => (
+            <React.Fragment key={picture.uri}>
+              <Image
+                resizeMethod={'scale'}
+                resizeMode={'contain'}
+                
+                style={{
+                  width: 275,
+                  height: 275,
+                  resizeMode: 'contain',
+                }}
+                source={picture}
+              />
+              <Text style={{padding: 12, color: '#FFF'}}>
+                Output: {predictions[index]}
+              </Text>
+            </React.Fragment>
+            
           ))
         }
 

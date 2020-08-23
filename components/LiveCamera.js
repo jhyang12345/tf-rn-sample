@@ -4,21 +4,23 @@ import { Camera } from 'expo-camera';
 import * as ImageManipulator from "expo-image-manipulator";
 import * as Permissions from 'expo-permissions';
 import * as tf from '@tensorflow/tfjs'
-import { fetch } from '@tensorflow/tfjs-react-native'
+import { fetch, bundleResourceIO } from '@tensorflow/tfjs-react-native'
 import * as mobilenet from '@tensorflow-models/mobilenet'
 import * as jpeg from 'jpeg-js'
 import { FontAwesome, Ionicons,MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 
 
-export default class App extends React.Component {
+import Gallery from './Gallery'
+
+export default class LiveCamera extends React.Component {
   state = {
     isTfReady: false,
     isModelReady: false,
     hasPermission: null,
     cameraType: Camera.Constants.Type.front,
     pictureTaken: false,
-    picture: null,
+    pictures: [],
     faces: [],
     dimensions: {
       x: 0,
@@ -33,7 +35,15 @@ export default class App extends React.Component {
     this.setState({
       isTfReady: true
     })
-    this.model = await mobilenet.load()
+    try {
+      const modelJson = require('../models/hotdog/model.json')
+      const modelWeightsId = require('../models/hotdog/group1-shard1of1.bin')
+      const resource = bundleResourceIO(modelJson, modelWeightsId)
+      this.model = await tf.loadLayersModel(resource)
+    } catch (err) {
+      console.log(err)
+    }
+    
     this.setState({ isModelReady: true })
     console.log("Model ready")
     this.getPermissionAsync()
@@ -99,6 +109,7 @@ export default class App extends React.Component {
     const { dimensions } = this.state
     const widthRatio = photo.width / dimensions.width
     const heightRatio = photo.height / dimensions.height
+    console.log(crop, dimensions, widthRatio, heightRatio)
     return {
       originX: crop.originX * widthRatio,
       originY: crop.originY * heightRatio,
@@ -117,13 +128,14 @@ export default class App extends React.Component {
       const { faces } = this.state
 
       if (faces.length > 0) {
-        faces.forEach(async (face) => {
+        for (const face of faces) {
           const cropDimensions = this.getCropDimensions({
             originX: face.bounds.origin.x,
             originY: face.bounds.origin.y,
             width: face.bounds.size.width,
             height: face.bounds.size.height
           }, photo)
+
           const newUri = await ImageManipulator.manipulateAsync(photo.uri, [
             {
               crop: cropDimensions
@@ -133,38 +145,13 @@ export default class App extends React.Component {
             }
           ])
 
-          this.setState({
+          this.setState((prevState) => ({
             pictureTaken: true,
-            picture: newUri,
-          })
-        })
+            pictures: [...prevState.pictures, newUri],
+          }))
+        }
       }
 
-      // this.setState({
-      //   pictureTaken: true,
-      //   picture: {uri: photo.uri},
-      // })
-      // console.log(photo)
-
-      
-      // const newUri = await ImageManipulator.manipulateAsync(photo.uri, [
-      //   {
-      //     crop: {
-            
-      //     }
-      //   },
-      //   {
-      //     resize: {
-      //       width: 420,
-      //     }
-      //   }
-      // ])
-
-      // console.log(newUri)
-
-      // this.classifyImage({
-      //   uri: newUri.uri,
-      // })
     }
   }
 
@@ -209,7 +196,7 @@ export default class App extends React.Component {
   }
 
   render(){
-    const { hasPermission, pictureTaken, picture } = this.state
+    const { hasPermission, pictureTaken, pictures } = this.state
     if (hasPermission === null) {
       return <View />;
     } else if (hasPermission === false) {
@@ -276,19 +263,11 @@ export default class App extends React.Component {
                       style={{ color: "#fff", fontSize: 40}}
                   />
                 </TouchableOpacity>
-                
               </View>
               {this.drawFaces()}
             </Camera>
-            : <Image
-                resizeMethod={'scale'}
-                resizeMode={'contain'}
-                style={{
-                  width: 300,
-                  height: 300,
-                  resizeMode: 'contain',
-                }}
-                source={picture}
+            : <Gallery 
+                pictures={pictures}
               />
           }
             

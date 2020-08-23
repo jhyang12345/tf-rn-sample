@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Platform, Image } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Platform, Image, ScrollView } from 'react-native';
 import { Camera } from 'expo-camera';
 import * as ImageManipulator from "expo-image-manipulator";
 import * as Permissions from 'expo-permissions';
@@ -38,8 +38,9 @@ export default class LiveCamera extends React.Component {
     try {
       const modelJson = require('../models/hotdog/model.json')
       const modelWeightsId = require('../models/hotdog/group1-shard1of1.bin')
-      const resource = bundleResourceIO(modelJson, modelWeightsId)
-      this.model = await tf.loadLayersModel(resource)
+      const resource = await bundleResourceIO(modelJson, modelWeightsId)
+      // Provided weight data has no target variable: batch_normalization_40/moving_mean
+      this.model = await tf.loadLayersModel(resource, {strict: false})
     } catch (err) {
       console.log(err)
     }
@@ -86,7 +87,7 @@ export default class LiveCamera extends React.Component {
       offset += 4
     }
 
-    return tf.tensor3d(buffer, [height, width, 3])
+    return tf.tensor4d(buffer, [1, height, width, 3])
   }
 
   classifyImage = async (image) => {
@@ -97,9 +98,10 @@ export default class LiveCamera extends React.Component {
       console.log(response)
       const rawImageData = await response.arrayBuffer()
       const imageTensor = this.imageToTensor(rawImageData)
-      const predictions = await this.model.classify(imageTensor)
-      this.setState({ predictions })
-      console.log(predictions)
+      const prediction = await this.model.predict(imageTensor)
+      const value = prediction.dataSync()
+      console.log(value[0])
+      this.setState({ prediction })
     } catch (error) {
       console.log(error)
     }
@@ -150,6 +152,20 @@ export default class LiveCamera extends React.Component {
             pictures: [...prevState.pictures, newUri],
           }))
         }
+
+        const { pictures } = this.state
+        for (const picture of pictures) {
+          const resizedImage = await ImageManipulator.manipulateAsync(picture.uri, [
+            {
+              resize: {
+                width: 128,
+                height: 128,
+              }
+            }
+          ])
+          console.log("Resized", resizedImage)
+          await this.classifyImage(resizedImage)
+        }
       }
 
     }
@@ -193,6 +209,13 @@ export default class LiveCamera extends React.Component {
       }
     </React.Fragment>
     )
+  }
+
+  reset = () => {
+    this.setState({
+      pictureTaken: false,
+      pictures: [],
+    })
   }
 
   render(){
@@ -266,9 +289,14 @@ export default class LiveCamera extends React.Component {
               </View>
               {this.drawFaces()}
             </Camera>
-            : <Gallery 
-                pictures={pictures}
-              />
+            : <ScrollView>
+                <Gallery 
+                  pictures={pictures}
+                  reset={this.reset}
+                />
+            </ScrollView>
+            
+
           }
             
         </View>

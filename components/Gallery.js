@@ -23,6 +23,20 @@ export default class Gallery extends React.Component {
             />
           ))
         }
+
+        <TouchableOpacity onPress={
+          () => this.props.reset()
+        }
+        style={styles.resetButton}
+        >
+          <Text style={{
+            color: '#FFF',
+            fontSize: 18
+          }}>
+            Reset
+          </Text>
+          
+        </TouchableOpacity>
       </View>
 
     )
@@ -34,5 +48,13 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: 64,
     alignItems: "center",
+  },
+  resetButton: {
+    marginTop: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    fontSize: 12,
+    backgroundColor: '#333567',
+    borderRadius: 4,
   }
 })

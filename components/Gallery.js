@@ -11,11 +11,34 @@ export default class Gallery extends React.Component {
       <View style={styles.container}>
         {
           pictures.map((picture, index) => (
+            predictions[index] > 0.5
+            ?
             <React.Fragment key={picture.uri}>
               <Image
                 resizeMethod={'scale'}
                 resizeMode={'contain'}
-                
+                style={{
+                  width: 275,
+                  height: 275,
+                  resizeMode: 'contain',
+                  borderRadius: 4,
+                  borderColor: '#a0b4fa',
+                  borderWidth: 2,
+                }}
+                source={picture}
+              />
+              <Text style={{padding: 12, color: '#FFF'}}>
+                Output: {predictions[index]}
+              </Text>
+              <Text style={{padding: 12, color: '#FFF'}}>
+              🎉🎉 IU 발견 🎉🎉
+              </Text>
+            </React.Fragment>
+            : 
+            <React.Fragment key={picture.uri}>
+              <Image
+                resizeMethod={'scale'}
+                resizeMode={'contain'}
                 style={{
                   width: 275,
                   height: 275,
@@ -26,8 +49,10 @@ export default class Gallery extends React.Component {
               <Text style={{padding: 12, color: '#FFF'}}>
                 Output: {predictions[index]}
               </Text>
+              <Text style={{padding: 12, color: '#FFF'}}>
+                누구신지...?.?
+              </Text>
             </React.Fragment>
-            
           ))
         }
 

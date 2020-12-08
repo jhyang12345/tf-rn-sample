@@ -41,8 +41,8 @@ export default class LiveCamera extends React.Component {
       const modelWeightsId = require('../models/cnn_dropout/group1-shard1of1.bin')
       const resource = await bundleResourceIO(modelJson, modelWeightsId)
       // Provided weight data has no target variable: batch_normalization_40/moving_mean
-      this.model = await tf.loadLayersModel(resource, { strict: false })
-      // this.model = await tf.loadLayersModel(resource)
+      // this.model = await tf.loadLayersModel(resource, { strict: false })
+      this.model = await tf.loadLayersModel(resource)
     } catch (err) {
       console.log(err)
     }
